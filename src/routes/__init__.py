@@ -67,7 +67,7 @@ def login_required(f):
             raise _unauthorized
         try:
             token = auth_header.split(" ")[1]
-            claims = jwt.get_claims_from_jwt(token, config.CONFIG.jwt_key(), jwt.Aud.AUTH)
+            claims = jwt.get_claims_from_jwt(token, config.Config.get_config().jwt_key(), jwt.Aud.AUTH)
         except Exception as e:
             logger.exception(e)
             raise _unauthorized

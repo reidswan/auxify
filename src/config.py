@@ -48,6 +48,18 @@ config_schema = {
 
 
 class Config:
+    _config = None
+
+    @classmethod
+    def configure(cls):
+        cls._config = Config("Config.json")
+
+    @classmethod
+    def get_config(cls)-> Config:
+        if cls._config is None:
+            cls.configure()
+        return cls._config # type: ignore
+
     def __init__(self, file_name: str):
         with open(file_name) as infile:
             self.data = ujson.loads(infile.read())
@@ -92,4 +104,3 @@ class Config:
     def spotify_redirect(self)-> str:
         return self.data["spotify"]["redirect_url"]
 
-CONFIG: Config = None # type: ignore

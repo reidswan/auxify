@@ -5,7 +5,7 @@ import config
 import routes
 
 def main():
-    config.CONFIG = config.Config("Config.json")
+    config.Config.configure()
     config.Config.configure_logging()
     app = web.Application()
     app.add_routes(routes.routes_tab)
