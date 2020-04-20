@@ -1,0 +1,6 @@
+*.pyc
+__pycache__
+Config.json
+venv/
+.vscode/
+.mypy_cache/
