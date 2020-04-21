@@ -1,5 +1,5 @@
 from jwcrypto import jwt, jwk
-import ujson
+import rapidjson
 from typing import Dict
 from datetime import datetime, timedelta
 from enum import Enum
@@ -8,7 +8,7 @@ TOKEN_DURATION: timedelta = timedelta(hours=24)
 
 
 def key_from_secret(secret: str) -> jwk.JWK:
-    return jwk.JWK.from_json(ujson.dumps({
+    return jwk.JWK.from_json(rapidjson.dumps({
         "k": secret,
         "kty": "oct"
     }))
@@ -22,8 +22,8 @@ class Aud(Enum):
 def generate_jwt(user_id: int, aud: Aud, key: jwk.JWK) -> str:
     claims= {
         'sub': str(user_id),
-        'nbf': datetime.now().timestamp(),
-        'exp': (datetime.now() + TOKEN_DURATION).timestamp(),
+        'nbf': datetime.utcnow().timestamp(),
+        'exp': (datetime.utcnow() + TOKEN_DURATION).timestamp(),
         'aud': aud.value
     }
 
@@ -37,7 +37,7 @@ def generate_jwt(user_id: int, aud: Aud, key: jwk.JWK) -> str:
 
 def get_claims_from_jwt(token: str, key: jwk.JWK, expected_aud: Aud) -> Dict:
     """ raises Exception if JWT missing """
-    claims = ujson.loads(jwt.JWT(
+    claims = rapidjson.loads(jwt.JWT(
         key=key,
         jwt=token,
         # None-value means check that claim exists

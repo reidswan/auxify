@@ -2,10 +2,9 @@ from aiohttp import web
 from aiohttp.web import Request, Response, json_response
 from typing import Mapping, Any
 from controllers import err
-from utils import jwt
+from utils import jwt, json_dumps_with_default
 import config
 import logging
-import ujson
 import jsonschema
 
 logger = logging.getLogger(__name__)
@@ -18,7 +17,7 @@ def error(message: str, status: int) -> Response:
         "error": True,
         "status": status,
         "message": message
-    }, status=status, dumps=ujson.dumps)
+    }, status=status, dumps=json_dumps_with_default)
 
 
 def json_router(verb: str):
@@ -33,7 +32,7 @@ def json_router(verb: str):
                     try:
                         kwargs[var] = cast_type(request.match_info[var])
                     except Exception as e:
-                        logger.debug(
+                        logger.info(
                             "Treating %s as not found due to error: %s", request.url(), e)
                         return error(f"{request.url()} not found", 404)
                 if accepts_body:
@@ -49,7 +48,7 @@ def json_router(verb: str):
                     kwargs['body'] = body
                 response = await f(request, **kwargs)
                 if isinstance(response, dict):
-                    return json_response(response, status=200)
+                    return json_response(response, status=200, dumps=json_dumps_with_default)
                 return response
             return inner
         return wrapper
@@ -86,5 +85,4 @@ delete = json_router("delete")
 patch = json_router("patch")
 
 
-import routes.auth
-import routes.rooms
+from routes import auth, rooms, user

@@ -1,6 +1,7 @@
 from databases import Database
 from typing import Dict, Optional
 from datetime import datetime
+from models import cast_key
 
 
 class RoomPersistence:
@@ -77,6 +78,7 @@ class RoomPersistence:
         result = await self.db.fetch_one(query=query, values=params)
         return bool(result)
 
+    @cast_key("active", bool)
     async def get_room(self, room_id: int)-> Dict:
         query = """
             SELECT room_id, owner, active, created_at, room_code
@@ -90,3 +92,25 @@ class RoomPersistence:
 
         result = await self.db.fetch_one(query=query, values=params)
         return dict(result) if result else {}
+    
+    @cast_key("active", bool)
+    async def get_room_by_owner(self, owner_id: int)-> Dict:
+        query = """
+            SELECT room_id, owner, active, created_at, room_code
+            FROM room
+            WHERE owner = :owner
+              AND active = :true
+            LIMIT 1
+        """
+        params = {
+            "owner": owner_id,
+            "true": True
+        }
+
+        result = await self.db.fetch_one(query=query, values=params)
+        if result:
+            result = dict(result)
+            result["active"] = bool(result["active"])
+            return result
+        else:
+            return {}

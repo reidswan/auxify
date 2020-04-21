@@ -1,11 +1,11 @@
 import aiohttp.web_exceptions as exc
-import ujson
+from utils import json_dumps_with_default
 from typing import Callable
 
 JSON = "application/json"
 
 def _error(exc_class, message: str)-> exc.HTTPException:
-    return exc_class(content_type=JSON, body=ujson.dumps({
+    return exc_class(content_type=JSON, body=json_dumps_with_default({
         "error": True,
         "message": message
     }))
@@ -30,3 +30,6 @@ def redirect_to(url: str):
 
 def failed_dependency(message: str):
     return _error(exc.HTTPFailedDependency, message)
+
+def forbidden(message: str):
+    return _error(exc.HTTPForbidden, message)

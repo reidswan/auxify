@@ -1,4 +1,6 @@
-import ujson
+from __future__ import annotations
+
+import rapidjson
 from typing import Tuple
 from jsonschema import validate
 from utils import jwt
@@ -7,6 +9,7 @@ from os import getenv
 import logging
 from databases import Database
 import aiohttp
+from external.spotify_api import SpotifyApi
 
 ENV_LOG_LEVEL = "LOG_LEVEL"
 
@@ -62,7 +65,7 @@ class Config:
 
     def __init__(self, file_name: str):
         with open(file_name) as infile:
-            self.data = ujson.loads(infile.read())
+            self.data = rapidjson.loads(infile.read())
             validate(schema=config_schema, instance=self.data)
 
         self.jwk = jwt.key_from_secret(self.data["jwt"]["secret"])
@@ -81,11 +84,11 @@ class Config:
     @staticmethod
     def configure_logging():
         try:
-            loglevel_str = os.getenv(ENV_LOG_LEVEL, "INFO")
+            loglevel_str = getenv(ENV_LOG_LEVEL, "INFO")
             loglevel = getattr(logging, loglevel_str)
         except:
             loglevel = logging.INFO
-
+        
         logging.basicConfig(level=loglevel)
 
     def get_database_connection(self)-> Database:
@@ -93,7 +96,17 @@ class Config:
         return Database(self.database_url(), min_size=min_size, max_size=max_size)
 
     def get_session(self)-> aiohttp.ClientSession:
+        if self.session.closed:
+            self.session = aiohttp.ClientSession()
         return self.session
+
+    def get_spotify_api(self)-> SpotifyApi:
+        return SpotifyApi(self.get_session(), self.spotify_client_id(), self.spotify_secret())
+
+    async def deferred_cleanup(self, _app):
+        yield
+        if self.session and not self.session.closed:
+            await self.session.close()
 
     def spotify_client_id(self)-> str:
         return self.data["spotify"]["client_id"]

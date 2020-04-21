@@ -32,9 +32,3 @@ async def spotify_auth(request: Request, claims: Dict):
 @post("/login", accepts_body=True, body_schema=login_schema)
 async def login(request: Request, body: Dict) -> Dict:
     return await auth.login(body["email"], body["password"], config.Config.get_config())
-
-
-@get("/me")
-@login_required
-async def me(request: Request, claims: Dict) -> Dict:
-    return await auth.me(int(claims["sub"]), config.Config.get_config())
