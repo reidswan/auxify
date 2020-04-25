@@ -2,11 +2,12 @@ FROM python:3.8
 
 RUN mkdir /code
 WORKDIR /code
+ENV LOG_LEVEL="DEBUG"
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY src/ .
-COPY Config.local.json .
+COPY Config.local.json Config.json
 
 CMD ["python", "main.py"]
