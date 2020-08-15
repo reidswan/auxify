@@ -1,6 +1,5 @@
 from aiohttp.web import Request, Response
 from typing import Dict
-from databases import Database
 
 from auxify.routes import get, post, put, login_required
 from auxify.schema.auth import register_user_schema, login_schema

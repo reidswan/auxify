@@ -1,5 +1,5 @@
 from aiosqlite import Connection
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from datetime import datetime
 
 from . import cast_key
@@ -33,6 +33,7 @@ class RoomPersistence:
         async with self.db.cursor() as cur: # treats the block as a transaction
             await cur.execute(deactivate_old_rooms, deactivate_old_room_params)
             await cur.execute(create_room, create_room_params)
+            await self.db.commit()
             return cur.lastrowid
 
 
@@ -49,6 +50,7 @@ class RoomPersistence:
         }
 
         await self.db.execute(insert, params)
+        await self.db.commit()
 
     async def remove_user_from_room(self, room_id: int, user_id: int):
         delete_user = """
@@ -116,3 +118,22 @@ class RoomPersistence:
         cursor = await self.db.execute(query, params)
         result = await cursor.fetchone()
         return dict(result) if result else {}
+
+    async def get_joined_rooms_by_user(self, user_id: int)-> List[Dict]:
+        query = """
+            SELECT room.room_id as room_id, room.owner_id, room.created_at
+            FROM room
+            LEFT JOIN room_member
+            ON room_member.room_id = room.room_id
+            WHERE (room_member.user_id = :user_id OR room.owner_id = :user_id)
+              AND active = :true
+            ORDER BY created_at DESC
+        """
+        params = {
+            "user_id": user_id,
+            "true": True
+        }
+
+        cursor = await self.db.execute(query, params)
+        return [dict(row) for row in await cursor.fetchall()]
+

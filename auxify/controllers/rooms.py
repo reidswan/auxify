@@ -54,6 +54,18 @@ async def get_owned_room_for_user(user_id: int, config: Config) -> Dict:
         raise e
 
 
+async def get_joined_rooms_for_user(user_id: int, config: Config)-> Dict:
+    """Get rooms which the user is a member of"""
+    try:
+        async with config.get_database_connection() as db:
+            room_persistence = rooms.RoomPersistence(db)
+            joined_rooms = await room_persistence.get_joined_rooms_by_user(user_id)
+            return {"rooms": joined_rooms}
+    except Exception as e:
+        logger.exception("Failed to get rooms for user %s: %s", user_id, e)
+        raise e
+
+
 async def enqueue_song(user_id: int, room_id: int, track_uri: str, config: Config) -> Dict:
     try:
         async with config.get_database_connection() as db:
@@ -62,12 +74,14 @@ async def enqueue_song(user_id: int, room_id: int, track_uri: str, config: Confi
             if not room:
                 raise err.not_found(f"No room with id {room_id}")
 
-            user_in_room = user_id == room["owner"] or await room_persistence.check_user_in_room(user_id, room_id)
+            user_in_room = user_id == room["owner_id"] or await room_persistence.check_user_in_room(user_id, room_id)
 
             if not user_in_room:
                 raise err.forbidden(f"User {user_id} is not permitted to play tracks in room {room_id}")
+            elif not room.get("active"):
+                raise err.forbidden(f"Room {room_id} is no longer active")
 
-            token_result = await spotify.get_valid_token_for_user(room["owner"], config)
+            token_result = await spotify.get_valid_token_for_user(room["owner_id"], config, requested_by=user_id)
             token = _handle_token_result(token_result)
 
         await config.get_spotify_api().enqueue_song(track_uri, token)

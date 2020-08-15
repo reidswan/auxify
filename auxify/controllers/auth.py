@@ -1,6 +1,6 @@
 import logging
 from typing import Dict
-from pymysql.err import IntegrityError
+from sqlite3 import IntegrityError
 import bcrypt
 from auxify.config import Config
 from auxify.utils import jwt
@@ -26,7 +26,7 @@ async def login(email: str, password: str, config: Config)-> Dict:
         logger.debug("User not found with email %s", email)
         raise auth_failed
     
-    if not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+    if not bcrypt.checkpw(password.encode(), user["password_hash"]):
         logger.debug("Incorrect password for user(id=%s)", user["user_id"])
         raise auth_failed
 

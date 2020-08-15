@@ -37,7 +37,8 @@ config_schema = {
             "type": "object",
             "properties": {
                 "location": {"type": "string"}
-            }
+            },
+            "required": ["location"]
         }
     }
 }
@@ -81,9 +82,11 @@ class Config:
         logging.basicConfig(level=loglevel)
 
     def get_database_connection(self)-> Connection:
-        connection = connect(self.database_location())
-        connection.row_factory = Row
-        return connection
+        
+        def set_row_factory(conn):
+            conn.row_factory = Row
+        
+        return DbConnectionWrapper(connect(self.database_location()), set_row_factory)
 
     def get_session(self)-> aiohttp.ClientSession:
         if self.session.closed:
@@ -107,3 +110,19 @@ class Config:
     def spotify_redirect(self)-> str:
         return self.data["spotify"]["redirect_url"]
 
+
+class DbConnectionWrapper(Connection):
+    """A wrapper around the aiosqlite.Connection that calls an 
+    arbitrary function on __aenter__"""
+    
+    def __init__(self, wrapped, on_enter=None):
+        self.wrapped = wrapped
+        self.on_enter = on_enter
+    
+    async def __aenter__(self, *a, **k):
+        managed_item = await self.wrapped.__aenter__(*a, **k)
+        self.on_enter(managed_item)
+        return managed_item
+    
+    async def __aexit__(self, *a, **k):
+        await self.wrapped.__aexit__(*a, **k)

@@ -1,13 +1,11 @@
 from aiohttp.web import Request, Response
-from schema.auth import register_user_schema, login_schema
 from typing import Dict
-from databases import Database
 
 from auxify.routes import get, post, put, login_required
 from auxify import config
 from auxify import models
 from auxify.controllers import auth, spotify
-
+from auxify.schema.auth import register_user_schema, login_schema
 
 
 @post("/register", accepts_body=True, body_schema=register_user_schema)

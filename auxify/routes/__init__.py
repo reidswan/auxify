@@ -87,4 +87,4 @@ delete = json_router("delete")
 patch = json_router("patch")
 
 
-from routes import auth, rooms, user
+from auxify.routes import auth, rooms, user
