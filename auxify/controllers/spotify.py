@@ -1,14 +1,16 @@
-from models import spotify_token
-from controllers import err
 import logging
-from config import Config
-from utils import jwt
 from typing import Dict, Union
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from enum import Enum
 import aiohttp.client_exceptions
-from pymysql.err import DatabaseError
+from sqlite3 import DatabaseError
+
+from auxify.models import spotify_token
+from auxify.controllers import err
+from auxify.config import Config
+from auxify.utils import jwt
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ async def spotify_auth(user_id: int, config: Config):
     query_string = urlencode(query_parameters)
     redirect = f"https://accounts.spotify.com/authorize?{query_string}"
 
-    logger.debug("Redirecting user to %s", redirect)
+    logger.info("Redirecting user to %s", redirect)
     err.redirect_to(redirect)
 
 
@@ -113,7 +115,7 @@ class GetTokenError(Enum):
     DB_ERROR = "Something went wrong"
 
 
-async def get_valid_token_for_user(user_id: int, config: Config)-> Union[str, GetTokenError]:
+async def get_valid_token_for_user(user_id: int, config: Config, requested_by=None)-> Union[str, GetTokenError]:
     try:
         async with config.get_database_connection() as db:
             token_persistence = spotify_token.SpotifyTokenPersistence(db)
@@ -131,6 +133,9 @@ async def get_valid_token_for_user(user_id: int, config: Config)-> Union[str, Ge
                 return stored_token["access_token"]
             elif not stored_token.get("refresh_token"):
                 # user session has expired and is not refreshable
+                if requested_by is not None and requested_by == user_id:
+                    # the owner is making the request, so ask them to re-auth
+                    spotify_auth(user_id, config)
                 return GetTokenError.EXPIRED
             
             # we have a refresh token to use

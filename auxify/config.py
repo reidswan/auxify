@@ -3,13 +3,14 @@ from __future__ import annotations
 import rapidjson
 from typing import Tuple
 from jsonschema import validate
-from utils import jwt
 from jwcrypto import jwk
 from os import getenv
 import logging
-from databases import Database
+from aiosqlite import Connection, connect, Row
 import aiohttp
-from external.spotify_api import SpotifyApi
+
+from auxify.utils import jwt
+from auxify.external.spotify_api import SpotifyApi
 
 ENV_LOG_LEVEL = "LOG_LEVEL"
 
@@ -35,16 +36,9 @@ config_schema = {
         "db": {
             "type": "object",
             "properties": {
-                "url": {"type": "string"},
-                "connections": {
-                    "type": "object",
-                    "properties": {
-                        "min": {"type": "number"},
-                        "max": {"type": "number"}
-                    },
-                    "required": ["min", "max"]
-                }
-            }
+                "location": {"type": "string"}
+            },
+            "required": ["location"]
         }
     }
 }
@@ -71,12 +65,8 @@ class Config:
         self.jwk = jwt.key_from_secret(self.data["jwt"]["secret"])
         self.session = aiohttp.ClientSession()
 
-    def database_url(self) -> str:
-        return self.data["db"]["url"]
-
-    def db_connections(self) -> Tuple[int, int]:
-        connections = self.data["db"]["connections"]
-        return (connections["min"], connections["max"])
+    def database_location(self) -> str:
+        return self.data["db"]["location"]
 
     def jwt_key(self) -> jwk.JWK:
         return self.jwk
@@ -91,9 +81,12 @@ class Config:
         
         logging.basicConfig(level=loglevel)
 
-    def get_database_connection(self)-> Database:
-        min_size, max_size = self.db_connections()
-        return Database(self.database_url(), min_size=min_size, max_size=max_size)
+    def get_database_connection(self)-> Connection:
+        
+        def set_row_factory(conn):
+            conn.row_factory = Row
+        
+        return DbConnectionWrapper(connect(self.database_location()), set_row_factory)
 
     def get_session(self)-> aiohttp.ClientSession:
         if self.session.closed:
@@ -117,3 +110,19 @@ class Config:
     def spotify_redirect(self)-> str:
         return self.data["spotify"]["redirect_url"]
 
+
+class DbConnectionWrapper(Connection):
+    """A wrapper around the aiosqlite.Connection that calls an 
+    arbitrary function on __aenter__"""
+    
+    def __init__(self, wrapped, on_enter=None):
+        self.wrapped = wrapped
+        self.on_enter = on_enter
+    
+    async def __aenter__(self, *a, **k):
+        managed_item = await self.wrapped.__aenter__(*a, **k)
+        self.on_enter(managed_item)
+        return managed_item
+    
+    async def __aexit__(self, *a, **k):
+        await self.wrapped.__aexit__(*a, **k)

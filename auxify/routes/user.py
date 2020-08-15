@@ -1,11 +1,12 @@
-from routes import get, post, put, login_required
 from aiohttp.web import Request, Response
-from schema.auth import register_user_schema, login_schema
 from typing import Dict
-from controllers import auth, spotify
-import config
-import models
-from databases import Database
+
+from auxify.routes import get, post, put, login_required
+from auxify.schema.auth import register_user_schema, login_schema
+from auxify.controllers import auth, spotify
+from auxify import config
+from auxify import models
+
 
 
 # @post("/me/password")

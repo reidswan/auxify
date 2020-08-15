@@ -1,6 +1,7 @@
 import aiohttp.web_exceptions as exc
-from utils import json_dumps_with_default
 from typing import Callable
+from auxify.utils import json_dumps_with_default
+
 
 JSON = "application/json"
 

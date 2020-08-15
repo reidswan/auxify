@@ -1,6 +1,7 @@
 aiohttp>=3.6.2,<4
-databases[mysql]>=0.2.6,<0.3
+aiosqlite>=0.15,<1
 jsonschema>=3.2,<4
 jwcrypto>=0.7,<1
 bcrypt>=3.1.7,<4
 python-rapidjson>=0.9,<1
+aiohttp-middlewares>=1.1,<2
