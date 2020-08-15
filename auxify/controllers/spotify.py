@@ -1,14 +1,16 @@
-from models import spotify_token
-from controllers import err
 import logging
-from config import Config
-from utils import jwt
 from typing import Dict, Union
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
 from enum import Enum
 import aiohttp.client_exceptions
 from pymysql.err import DatabaseError
+
+from auxify.models import spotify_token
+from auxify.controllers import err
+from auxify.config import Config
+from auxify.utils import jwt
+
 
 logger = logging.getLogger(__name__)
 

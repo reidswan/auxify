@@ -1,11 +1,13 @@
 from aiohttp import web
 from aiohttp.web import Request, Response, json_response
 from typing import Mapping, Any
-from controllers import err
-from utils import jwt, json_dumps_with_default
-import config
 import logging
 import jsonschema
+
+from auxify.controllers import err
+from auxify import config
+from auxify.utils import jwt, json_dumps_with_default
+
 
 logger = logging.getLogger(__name__)
 

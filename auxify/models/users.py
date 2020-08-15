@@ -1,9 +1,9 @@
-from databases import Database
+from aiosqlite import Connection
 from typing import Dict
 
 
 class UsersPersistence:
-    def __init__(self, db: Database):
+    def __init__(self, db: Connection):
         self.db = db
 
     async def create_user(self, first_name: str, last_name: str, email: str, password_hash: str)-> int:
@@ -22,7 +22,10 @@ class UsersPersistence:
             if not value:
                 raise Exception(f"parameter {key} may not be empty")
 
-        return await self.db.execute(query=create_query, values=params)
+        result = await self.db.execute(create_query, params)
+        await self.db.commit()
+        return result.lastrowid
+
 
     async def get_user_by_id(self, user_id: int) -> Dict:
         get_user = """
@@ -39,7 +42,8 @@ class UsersPersistence:
             "user_id": user_id
         }
 
-        result = await self.db.fetch_one(query=get_user, values=params)
+        cursor = await self.db.execute(get_user, params)
+        result = await cursor.fetchone()
         return dict(result) if result else {}
 
     async def get_user_by_email(self, email_address: str) -> Dict:
@@ -57,5 +61,6 @@ class UsersPersistence:
             "email": email_address
         }
         
-        result = await self.db.fetch_one(query=get_user_by_email, values=params)
+        cursor = await self.db.execute(get_user_by_email, params)
+        result = await cursor.fetchone()
         return dict(result) if result else {}

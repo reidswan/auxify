@@ -1,11 +1,13 @@
-from models import rooms
-from config import Config
 from typing import Optional, cast, Dict, Union
-from controllers import spotify, err
-from controllers.spotify import GetTokenError
 import logging
 from aiohttp.web_exceptions import HTTPException
 from aiohttp.client_exceptions import ClientResponseError
+
+from auxify.models import rooms
+from auxify.config import Config
+from auxify.controllers import spotify, err
+from auxify.controllers.spotify import GetTokenError
+
 
 logger = logging.getLogger(__name__)
 

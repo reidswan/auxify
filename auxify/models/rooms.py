@@ -1,18 +1,19 @@
-from databases import Database
+from aiosqlite import Connection
 from typing import Dict, Optional
 from datetime import datetime
-from models import cast_key
+
+from . import cast_key
 
 
 class RoomPersistence:
-    def __init__(self, db: Database):
+    def __init__(self, db: Connection):
         self.db = db
 
     async def create_room(self, owner: int, room_code: Optional[str])-> int:
         deactivate_old_rooms = """
             UPDATE room
             SET active = :false
-            WHERE owner = :owner
+            WHERE owner_id = :owner
         """
         deactivate_old_room_params = {
             "false": False,
@@ -20,7 +21,7 @@ class RoomPersistence:
         }
 
         create_room = """
-            INSERT INTO room (owner, active, room_code)
+            INSERT INTO room (owner_id, active, room_code)
             VALUES (:owner, :true, :room_code)
         """
         create_room_params = {
@@ -29,15 +30,17 @@ class RoomPersistence:
             "room_code": room_code
         }
 
-        async with self.db.transaction():
-            await self.db.execute(query=deactivate_old_rooms, values=deactivate_old_room_params)
-            return await self.db.execute(query=create_room, values=create_room_params)
+        async with self.db.cursor() as cur: # treats the block as a transaction
+            await cur.execute(deactivate_old_rooms, deactivate_old_room_params)
+            await cur.execute(create_room, create_room_params)
+            return cur.lastrowid
 
 
     async def add_user_to_room(self, room_id: int, user_id: int):
         insert = """
-            INSERT IGNORE INTO room_member (room_id, user_id)
+            INSERT INTO room_member (room_id, user_id)
             VALUES (:room_id, :user_id)
+            ON CONFLICT DO NOTHING
         """
 
         params = {
@@ -45,29 +48,29 @@ class RoomPersistence:
             "user_id": user_id
         }
 
-        await self.db.execute(query=insert, values=params)
+        await self.db.execute(insert, params)
 
     async def remove_user_from_room(self, room_id: int, user_id: int):
         delete_user = """
             DELETE FROM room_member 
             WHERE   user_id = :user_id
                 AND room_id = :room_id
-            LIMIT 1
         """
         params = {
             "user_id": user_id,
             "room_id": room_id
         }
 
-        await self.db.execute(query=delete_user, values=params)
+        await self.db.execute(delete_user, params)
+        await self.db.commit()
 
 
     async def check_user_in_room(self, user_id: int, room_id: int)-> bool:
         query = """
             SELECT user_id
-            FROM room
-            WHERE   room.user_id = :user_id
-                AND room.room_id = :room_id 
+            FROM room_member
+            WHERE   room_member.user_id = :user_id
+                AND room_member.room_id = :room_id 
             LIMIT 1
         """
         params = {
@@ -75,13 +78,14 @@ class RoomPersistence:
             "room_id": room_id
         }
 
-        result = await self.db.fetch_one(query=query, values=params)
+        cursor = await self.db.execute(query, params)
+        result = await cursor.fetchone()
         return bool(result)
 
     @cast_key("active", bool)
     async def get_room(self, room_id: int)-> Dict:
         query = """
-            SELECT room_id, owner, active, created_at, room_code
+            SELECT room_id, owner_id, active, created_at, room_code
             FROM room
             WHERE room_id = :room_id
             LIMIT 1
@@ -90,16 +94,18 @@ class RoomPersistence:
             "room_id": room_id
         }
 
-        result = await self.db.fetch_one(query=query, values=params)
+        cursor = await self.db.execute(query, params)
+        result = await cursor.fetchone()
         return dict(result) if result else {}
     
     @cast_key("active", bool)
     async def get_room_by_owner(self, owner_id: int)-> Dict:
         query = """
-            SELECT room_id, owner, active, created_at, room_code
+            SELECT room_id, owner_id, active, created_at, room_code
             FROM room
-            WHERE owner = :owner
+            WHERE owner_id = :owner
               AND active = :true
+            ORDER BY created_at DESC
             LIMIT 1
         """
         params = {
@@ -107,10 +113,6 @@ class RoomPersistence:
             "true": True
         }
 
-        result = await self.db.fetch_one(query=query, values=params)
-        if result:
-            result = dict(result)
-            result["active"] = bool(result["active"])
-            return result
-        else:
-            return {}
+        cursor = await self.db.execute(query, params)
+        result = await cursor.fetchone()
+        return dict(result) if result else {}

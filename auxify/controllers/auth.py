@@ -1,11 +1,12 @@
-from models import users
-from controllers import err
-import bcrypt
 import logging
-from config import Config
-from utils import jwt
 from typing import Dict
 from pymysql.err import IntegrityError
+import bcrypt
+from auxify.config import Config
+from auxify.utils import jwt
+from auxify.models import users
+from auxify.controllers import err
+
 
 logger = logging.getLogger(__name__)
 

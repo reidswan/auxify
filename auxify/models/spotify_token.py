@@ -1,17 +1,18 @@
-from databases import Database
+from aiosqlite import Connection
 from typing import Dict, Optional
 from datetime import datetime
+from auxify.models import cast_key
 
 
 class SpotifyTokenPersistence:
-    def __init__(self, db: Database):
+    def __init__(self, db: Connection):
         self.db = db
 
     async def upsert_token(self, user_id: int, spotify_user_id: str, access_token: str, refresh_token: Optional[str], created_at: datetime, duration_seconds: int)-> int:
         upsert_query = """
             INSERT INTO spotify_token (user_id, spotify_user_id, access_token, refresh_token, created_at, duration_seconds)
             VALUES (:user_id, :spotify_user_id, :access_token, :refresh_token, :created_at, :duration_seconds)
-            ON DUPLICATE KEY UPDATE
+            ON CONFLICT (spotify_user_id) DO UPDATE SET
                 access_token = :access_token,
                 refresh_token = :refresh_token,
                 created_at = :created_at,
@@ -27,8 +28,11 @@ class SpotifyTokenPersistence:
             "duration_seconds": duration_seconds
         }
 
-        return await self.db.execute(query=upsert_query, values=params)
+        result = await self.db.execute(upsert_query, params)
+        await self.db.commit()
+        return result.lastrowid
 
+    @cast_key("created_at", datetime.fromisoformat)
     async def get_token_by_user(self, user_id: int)-> Dict:
         get_token = """
             SELECT token_id, user_id, spotify_user_id, access_token, refresh_token, created_at, duration_seconds
@@ -41,5 +45,6 @@ class SpotifyTokenPersistence:
             "user_id": user_id
         }
 
-        result = await self.db.fetch_one(query=get_token, values=params)
+        cursor = await self.db.execute(get_token, params)
+        result = await cursor.fetchone()
         return dict(result) if result else {}

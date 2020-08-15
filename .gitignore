@@ -4,3 +4,4 @@ Config*.json
 venv/
 .vscode/
 .mypy_cache/
+*.db
