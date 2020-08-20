@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS room (
     active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)), -- "boolean; is this room still active?"
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     room_code TEXT NULL DEFAULT NULL, -- passcode used to join a room; null for open joining
+    room_name TEXT NOT NULL, -- the user-defined name for a room
     FOREIGN KEY (owner_id) REFERENCES user (user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_room_owner_active ON room (owner_id, active);

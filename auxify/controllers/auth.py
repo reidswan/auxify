@@ -2,10 +2,12 @@ import logging
 from typing import Dict
 from sqlite3 import IntegrityError
 import bcrypt
+import asyncio
+
 from auxify.config import Config
 from auxify.utils import jwt
-from auxify.models import users
-from auxify.controllers import err
+from auxify.models import users, rooms
+from auxify.controllers import err, spotify
 
 
 logger = logging.getLogger(__name__)
@@ -60,11 +62,17 @@ async def register_user(first_name: str, last_name: str, email: str, password: s
 async def me(user_id: int, config: Config)-> Dict:
     try:
         async with config.get_database_connection() as db:
-            user = await users.UsersPersistence(db).get_user_by_id(user_id)
+            get_user = users.UsersPersistence(db).get_user_by_id(user_id)
+            get_joined_rooms = rooms.RoomPersistence(db).get_joined_rooms_by_user(user_id)
+            get_token = spotify.get_valid_token_for_user(user_id, config)
+            (user, joined_rooms, token) = await asyncio.gather(get_user, get_joined_rooms,
+                                                               get_token, return_exceptions=False)
     except Exception as e:
         logger.exception("Failed to get user(id=%s) from db: %s", user_id, e)
         raise err.internal_server_error()
     del user["password_hash"]
+    user["rooms"] = joined_rooms
+    user["authed_with_spotify"] = isinstance(token, str)
     return user
 
 

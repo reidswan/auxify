@@ -11,14 +11,15 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
         async with aiosqlite.connect(self.db_name) as db:
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
-            room_id = await room_model.create_room(user_id, "test_room_code")
+            room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name")
 
             room_data = await room_model.get_room(room_id)
             expected_room_data = {
                 "room_id": room_id,
                 "active": True,
                 "owner_id": user_id,
-                "room_code": "test_room_code"
+                "room_code": "test_room_code",
+                "room_name": "test_room_name"
             }
             for key in expected_room_data:
                 self.assertIn(key, room_data)
@@ -32,8 +33,8 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
             
-            existing_room_id = await room_model.create_room(user_id, "test_room_code")
-            new_room_id = await room_model.create_room(user_id, "test_room_code_2")
+            existing_room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name_1")
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2","test_room_name_2")
             
             existing_room_data = await room_model.get_room(existing_room_id)
             self.assertFalse(existing_room_data["active"], "Existing room should have been deactivated")
@@ -42,7 +43,8 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
                 "room_id": new_room_id,
                 "active": True,
                 "owner_id": user_id,
-                "room_code": "test_room_code_2"
+                "room_code": "test_room_code_2",
+                "room_name": "test_room_name_2"
             }
             for key in expected_room_data:
                 self.assertIn(key, room_data)
@@ -56,7 +58,7 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
             
-            room_id = await room_model.create_room(user_id, "test_room_code")
+            room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name")
             await room_model.add_user_to_room(room_id, other_user["user_id"])
 
             is_user_in_room = await room_model.check_user_in_room(other_user["user_id"], room_id)
@@ -70,7 +72,7 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
             
-            room_id = await room_model.create_room(user_id, "test_room_code")
+            room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name")
 
             is_user_in_room = await room_model.check_user_in_room(other_user["user_id"], room_id)
             self.assertFalse(is_user_in_room)
@@ -83,7 +85,7 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
             
-            room_id = await room_model.create_room(user_id, "test_room_code")
+            room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name")
             await room_model.add_user_to_room(room_id, other_user["user_id"])
 
             is_user_in_room = await room_model.check_user_in_room(other_user["user_id"], room_id)
@@ -101,8 +103,8 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             db.row_factory = aiosqlite.Row
             room_model = rooms.RoomPersistence(db)
             
-            existing_room_id = await room_model.create_room(user_id, "test_room_code")
-            new_room_id = await room_model.create_room(user_id, "test_room_code_2")
+            existing_room_id = await room_model.create_room(user_id, "test_room_code", "test_room_name")
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2", "test_room_name_2")
             
             room = await room_model.get_room_by_owner(user_id)
             self.assertTrue(room["active"])

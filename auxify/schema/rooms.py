@@ -3,8 +3,12 @@ create_room_schema = {
     "properties": {
         "room_code": {
             "type": "string"
+        },
+        "room_name": {
+            "type": "string"
         }
-    }
+    },
+    "required": ["room_name"]
 }
 
 enqueue_song_schema = {

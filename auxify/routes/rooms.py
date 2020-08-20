@@ -10,7 +10,7 @@ from auxify.schema.rooms import create_room_schema, enqueue_song_schema
 @post("/rooms", accepts_body=True, body_schema=create_room_schema)
 @login_required
 async def create_room(request: Request, body: Dict, claims: Dict) -> Dict:
-    return await rooms.create_room(int(claims["sub"]), body.get("room_code"), Config.get_config())
+    return await rooms.create_room(int(claims["sub"]), body.get("room_code"), body["room_name"], Config.get_config())
 
 
 @get("/rooms/owned")

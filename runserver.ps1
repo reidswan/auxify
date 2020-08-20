@@ -1,0 +1,1 @@
+python -m aiohttp_devtools runserver main.py  --app-factory get_app -p 8080

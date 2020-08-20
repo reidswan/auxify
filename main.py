@@ -6,7 +6,7 @@ import aiohttp.web_exceptions as exc
 from auxify.config import Config
 from auxify import routes
 
-def main():
+def get_app():
     Config.configure()
     Config.configure_logging()
     app = web.Application(middlewares=[
@@ -15,8 +15,8 @@ def main():
     ])
     app.add_routes(routes.routes_tab)
     app.cleanup_ctx.append(Config.get_config().deferred_cleanup)
-    web.run_app(app)
+    return app
 
 
 if __name__ == '__main__':
-    main()
+    web.run_app(get_app())

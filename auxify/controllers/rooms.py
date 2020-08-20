@@ -25,7 +25,7 @@ def _handle_token_result(token_result: Union[str, GetTokenError])-> str:
     return token_result
 
 
-async def create_room(user_id: int, room_code: Optional[str], config: Config) -> Dict:
+async def create_room(user_id: int, room_code: Optional[str], room_name: str, config: Config) -> Dict:
     try:
         # only users that have auth'd with Spotify may create rooms
         token_result = await spotify.get_valid_token_for_user(user_id, config)
@@ -33,7 +33,7 @@ async def create_room(user_id: int, room_code: Optional[str], config: Config) ->
 
         async with config.get_database_connection() as db:
             room_persistence = rooms.RoomPersistence(db)
-            room_id = await room_persistence.create_room(user_id, room_code)
+            room_id = await room_persistence.create_room(user_id, room_code, room_name)
             logger.debug("Created room(id=%s) for user(id=%s)",
                          room_id, user_id)
             created_room = await room_persistence.get_room(room_id)
