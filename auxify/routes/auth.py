@@ -26,7 +26,7 @@ async def callback(request: Request) -> Dict:
 @get("/spotify_auth")
 @login_required
 async def spotify_auth(request: Request, claims: Dict):
-    await spotify.spotify_auth(int(claims["sub"]), config.Config.get_config())
+    return await spotify.spotify_auth(int(claims["sub"]), config.Config.get_config())
 
 
 @post("/login", accepts_body=True, body_schema=login_schema)

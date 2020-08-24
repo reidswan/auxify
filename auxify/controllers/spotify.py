@@ -33,7 +33,9 @@ async def spotify_auth(user_id: int, config: Config):
     redirect = f"https://accounts.spotify.com/authorize?{query_string}"
 
     logger.info("Redirecting user to %s", redirect)
-    err.redirect_to(redirect)
+    return {
+        "url": redirect
+    }
 
 
 async def handle_spotify_callback(query_params: Dict, config: Config):
