@@ -64,3 +64,14 @@ class SpotifyApi:
         ) as resp:
             resp.raise_for_status()
 
+
+    async def search(self, query: str, token: str):
+        headers = self.user_auth_header(token)
+        params = {"q": query, "type": "track", "market": "from_token", "limit": 20}
+        async with self.session.get(
+            "https://api.spotify.com/v1/search", 
+            params=params,
+            headers=headers
+        ) as resp:
+            resp.raise_for_status()
+            return await resp.json(loads=rapidjson.loads)

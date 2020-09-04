@@ -29,3 +29,16 @@ async def enqueue_song(request: Request, room_id: int, body: Dict, claims: Dict)
 @login_required
 async def get_rooms(request: Request, claims: Dict)-> Dict:
     return await rooms.get_joined_rooms_for_user(int(claims["sub"]), Config.get_config())
+
+
+@get("/rooms/{room_id:\d+}/search", url_variable_types={"room_id": int})
+@login_required
+async def search(request: Request, room_id: int, claims: Dict)-> Dict:
+    query = request.query.get("q")
+    return await rooms.search(int(claims["sub"]), room_id, query, Config.get_config())
+
+
+@get("/rooms/{room_id:\d+}", url_variable_types={"room_id": int})
+@login_required
+async def get_room_by_id(request: Request, room_id: int, claims: Dict)-> Dict:
+    return await rooms.get_room_by_id(room_id, int(claims["sub"]), Config.get_config())

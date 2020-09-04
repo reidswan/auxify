@@ -137,7 +137,7 @@ async def get_valid_token_for_user(user_id: int, config: Config, requested_by=No
                 # user session has expired and is not refreshable
                 if requested_by is not None and requested_by == user_id:
                     # the owner is making the request, so ask them to re-auth
-                    spotify_auth(user_id, config)
+                    await spotify_auth(user_id, config)
                 return GetTokenError.EXPIRED
             
             # we have a refresh token to use
@@ -151,7 +151,7 @@ async def get_valid_token_for_user(user_id: int, config: Config, requested_by=No
                 user_id,
                 stored_token["spotify_user_id"],
                 response["access_token"],
-                response.get("refresh_token"),
+                response.get("refresh_token", stored_token["refresh_token"]),
                 created_at, 
                 response["expires_in"]
             )
