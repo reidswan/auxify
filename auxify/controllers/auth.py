@@ -49,7 +49,7 @@ async def register_user(first_name: str, last_name: str, email: str, password: s
             user = await user_persistence.get_user_by_id(created_user_id)
     except IntegrityError as e:
         logger.debug("IntegrityError registering user with email %s: %s", email, e)
-        raise err.bad_request("Failed to register user: email address in use")
+        raise err.bad_request("Email address is already in use")
     except Exception as e:
         logger.exception("Failed to get user with email %s from db: %s", email, e)
         raise err.internal_server_error()    

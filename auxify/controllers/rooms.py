@@ -38,6 +38,28 @@ async def get_room_by_id(room_id: int, user_id: int, config: Config)-> Dict:
         raise e
 
 
+async def get_room_by_id_minimal(room_id: int, config: Config)-> Dict:
+    """
+    Get data for a room by id, redacting secret information like the room code
+    """
+    try:
+        async with config.get_database_connection() as db:
+            room_persistence = rooms.RoomPersistence(db)
+            room = await room_persistence.get_room(room_id)
+            if not room or not room.get("active"):
+                raise err.not_found(f"No active room with id {room_id}")
+
+            return {
+                "room_id": room.get("room_id"),
+                "owner_id": room.get("owner_id"),
+                "room_name": room.get("room_name"),
+                "has_code": bool(room.get("room_code"))
+            }
+    except Exception as e:
+        logger.exception("Failed to retrieve minimal data for room %s: %s", room_id, e)
+        raise e
+
+
 async def get_room_for_user_assertive(room_id: int, user_id: int, db: Connection):
     """
     helper method to get a room if the room exists, is active, and the user is a member of it
@@ -51,9 +73,9 @@ async def get_room_for_user_assertive(room_id: int, user_id: int, db: Connection
     user_in_room = user_id == room["owner_id"] or await room_persistence.check_user_in_room(user_id, room_id)
 
     if not user_in_room:
-        raise err.forbidden(f"User {user_id} is not permitted to play tracks in room {room_id}")
+        raise err.forbidden(f"User {user_id} is not a member of room {room_id}")
     elif not room.get("active"):
-        raise err.forbidden(f"Room {room_id} is no longer active")
+        raise err.not_found(f"No active room with id {room_id}")
     else:
         return room
 
@@ -126,7 +148,6 @@ async def enqueue_song(user_id: int, room_id: int, track_uri: str, config: Confi
 
 
 async def search(user_id: int, room_id: int, query: str, config: Config)-> Dict:
-    logger.info("HERE")
     if not query:
         raise err.bad_request("No query string supplied to search for")
     
@@ -166,3 +187,26 @@ def extract_relevant_data_from_search_results(search_results: Dict):
         "uri": track.get("uri"),
         "images": track.get("album", {}).get("images", [])
     } for track in tracks]
+
+
+async def join_room(user_id: int, room_id: int, room_code: Optional[str], config: Config)-> Dict:
+    """Process a request from a user to join a room"""
+    try:
+        async with config.get_database_connection() as db:
+            room_persistence = rooms.RoomPersistence(db)
+            room = room_persistence.get_room(room_id)
+            if not room or not room.get("active"):
+                raise err.not_found(f"Active room with id {room_id} not found")
+            
+            if room.get("room_code"):
+                if room["room_code"] != room_code:
+                    return {"success": False, "message": "Invalid room code"}
+            
+            await room_persistence.add_user_to_room(room_id, user_id)
+
+            return {"success": True, "message": "Successfully joined the room"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get rooms for user %s: %s", user_id, e)
+        raise e
