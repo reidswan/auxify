@@ -48,10 +48,10 @@ async def get_room_by_id(request: Request, room_id: int, claims: Dict)-> Dict:
 @login_required
 async def get_room_by_id_minimal(request: Request, room_id: int, claims: Dict)-> Dict:
     """Like /room/{room_id}, but with redactions & manipulations for secrecy; for users not in the room"""
-    return await rooms.get_room_by_id_minimal(room_id, Config.get_config())
+    return await rooms.get_room_by_id_minimal(room_id, int(claims["sub"]), Config.get_config())
 
 
-@put("/rooms/{room_id:\d+}", url_variable_types={"room_id": int}, accepts_body=True, body_schema=create_room_schema)
+@put("/rooms/{room_id:\d+}/join", url_variable_types={"room_id": int}, accepts_body=True, body_schema=join_room_schema)
 @login_required
 async def join_room(request: Request, room_id: int, body: Dict, claims: Dict)-> Dict:
     room_code = None

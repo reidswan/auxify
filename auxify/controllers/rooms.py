@@ -38,7 +38,19 @@ async def get_room_by_id(room_id: int, user_id: int, config: Config)-> Dict:
         raise e
 
 
-async def get_room_by_id_minimal(room_id: int, config: Config)-> Dict:
+async def is_user_in_room(user_id: int, room_id: int, db: Connection, *, room: Optional[Dict]=None):
+    """
+    Check if a user is in a room: the user is a room member or is the owner
+    """
+    room_persistence = rooms.RoomPersistence(db)
+    if room is None: 
+        room = room_persistence.get_room(room_id)
+    if room is not None and room.get("owner_id") == user_id:
+        return True
+    return await room_persistence.check_user_in_room(user_id, room_id)
+
+
+async def get_room_by_id_minimal(room_id: int, user_id: int, config: Config)-> Dict:
     """
     Get data for a room by id, redacting secret information like the room code
     """
@@ -48,12 +60,13 @@ async def get_room_by_id_minimal(room_id: int, config: Config)-> Dict:
             room = await room_persistence.get_room(room_id)
             if not room or not room.get("active"):
                 raise err.not_found(f"No active room with id {room_id}")
-
+            user_in_room = await is_user_in_room(user_id, room_id, db, room=room)
             return {
                 "room_id": room.get("room_id"),
                 "owner_id": room.get("owner_id"),
                 "room_name": room.get("room_name"),
-                "has_code": bool(room.get("room_code"))
+                "has_code": bool(room.get("room_code")),
+                "user_in_room": user_in_room
             }
     except Exception as e:
         logger.exception("Failed to retrieve minimal data for room %s: %s", room_id, e)
@@ -70,7 +83,7 @@ async def get_room_for_user_assertive(room_id: int, user_id: int, db: Connection
     if not room:
         raise err.not_found(f"No room with id {room_id}")
 
-    user_in_room = user_id == room["owner_id"] or await room_persistence.check_user_in_room(user_id, room_id)
+    user_in_room = await is_user_in_room(user_id, room_id, db, room=room)
 
     if not user_in_room:
         raise err.forbidden(f"User {user_id} is not a member of room {room_id}")
@@ -194,9 +207,12 @@ async def join_room(user_id: int, room_id: int, room_code: Optional[str], config
     try:
         async with config.get_database_connection() as db:
             room_persistence = rooms.RoomPersistence(db)
-            room = room_persistence.get_room(room_id)
+            room = await room_persistence.get_room(room_id)
             if not room or not room.get("active"):
                 raise err.not_found(f"Active room with id {room_id} not found")
+            
+            if await is_user_in_room(user_id, room_id, db, room=room):
+                return {"success": True, "message": "User is already in room"}
             
             if room.get("room_code"):
                 if room["room_code"] != room_code:
@@ -210,3 +226,4 @@ async def join_room(user_id: int, room_id: int, room_code: Optional[str], config
     except Exception as e:
         logger.exception("Failed to get rooms for user %s: %s", user_id, e)
         raise e
+
