@@ -138,4 +138,3 @@ class RoomPersistence:
 
         cursor = await self.db.execute(query, params)
         return [dict(row) for row in await cursor.fetchall()]
-

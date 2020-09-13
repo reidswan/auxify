@@ -20,3 +20,12 @@ enqueue_song_schema = {
     },
     "required": ["uri"]
 }
+
+join_room_schema = {
+    "type": "object",
+    "properties": {
+        "room_code": {
+            "type": "string"
+        }
+    }
+}
