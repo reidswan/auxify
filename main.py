@@ -17,6 +17,8 @@ def get_app():
     app.cleanup_ctx.append(Config.get_config().deferred_cleanup)
     return app
 
+async def get_app_async():
+    return get_app()
 
 if __name__ == '__main__':
     web.run_app(get_app())

@@ -1,0 +1,1 @@
+gunicorn main:get_app_async --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
