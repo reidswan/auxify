@@ -227,3 +227,59 @@ async def join_room(user_id: int, room_id: int, room_code: Optional[str], config
         logger.exception("Failed to get rooms for user %s: %s", user_id, e)
         raise e
 
+
+async def deactivate_room(user_id: int, room_id: int, config: Config)-> Dict:
+    """Process a request from an owner to deactivate an owned room"""
+    try:
+        async with config.get_database_connection() as db:
+            room_persistence = rooms.RoomPersistence(db)
+            room = await room_persistence.get_room(room_id)
+            if not room or not room.get("active"):
+                raise err.not_found(f"Active room with id {room_id} not found")
+            
+            if room["owner_id"] != user_id:
+                raise err.forbidden("User is not permitted to deactivate this room")
+            
+            await room_persistence.deactivate_room(room_id)
+
+            return {"success": True, "message": "Successfully deactivated the room"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to deactivate rooms for user %s: %s", user_id, e)
+        raise e
+
+
+async def find_room(query: Dict, config: Config)-> Dict:
+    """get a room's ID using either the owner's ID or the room ID
+    in the case of supplying the latter, this simply verifies that a room
+    with that ID exists"""
+
+    if "owner_id" in query:
+        resource_name = "owner_id"
+        query_method = rooms.RoomPersistence.get_room_by_owner
+    elif "room_id" in query:
+        resource_name = "room_id"
+        query_method = rooms.RoomPersistence.get_room
+    else:
+        raise err.bad_request("Supply either a room_id or an owner_id to search for")
+
+    try:
+        resource_id = int(query[resource_name])
+    except ValueError:
+        raise err.bad_request(f"'{query[resource_name]}' is not a valid {resource_name}")
+
+    try:
+        async with config.get_database_connection() as db:
+            room_persistence = rooms.RoomPersistence(db)
+            room = await query_method(room_persistence, resource_id)
+            if not room or not room.get("active"):
+                raise err.not_found(f"No active rooms found for {resource_name} {resource_id}")
+            else:
+                return {"room_id": room["room_id"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to find room with query %s: %s", query, e)
+        raise e
+    

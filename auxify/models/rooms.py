@@ -124,11 +124,17 @@ class RoomPersistence:
         query = """
             SELECT room.room_id as room_id, room.owner_id,
                    room.created_at, room.room_name as room_name
-            FROM room
-            LEFT JOIN room_member
-            ON room_member.room_id = room.room_id
-            WHERE (room_member.user_id = :user_id OR room.owner_id = :user_id)
-              AND active = :true
+            FROM (
+                SELECT room.room_id as room_id 
+                FROM room 
+                LEFT JOIN room_member ON room_member.room_id = room.room_id
+                WHERE room_member.user_id = :user_id AND active = :true
+                UNION SELECT room.room_id 
+                FROM room 
+                WHERE room.owner_id = :user_id AND active = :true
+            ) joined_rooms
+            INNER JOIN room ON room.room_id = joined_rooms.room_id
+            GROUP BY room.room_id
             ORDER BY created_at DESC
         """
         params = {
@@ -138,3 +144,14 @@ class RoomPersistence:
 
         cursor = await self.db.execute(query, params)
         return [dict(row) for row in await cursor.fetchall()]
+
+    async def deactivate_room(self, room_id: int):
+        deactivate_query = """UPDATE room SET active = :false WHERE room_id = :room_id"""
+
+        params = {
+            "false": False,
+            "room_id": room_id
+        }
+
+        await self.db.execute(deactivate_query, params)
+        await self.db.commit()

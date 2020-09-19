@@ -109,3 +109,63 @@ class TestRooms(ModelTest, IsolatedAsyncioTestCase):
             room = await room_model.get_room_by_owner(user_id)
             self.assertTrue(room["active"])
             self.assertEqual(room["room_id"], new_room_id)
+
+    async def test_get_owned_rooms_multiple_members(self):
+        """tests that getting a room for a user only returns each room once"""
+        user_id = (await self.get_or_create_user())["user_id"]
+        other_user = await self.random_new_user()
+        other_user_2 = await self.random_new_user()
+        async with aiosqlite.connect(self.db_name) as db:
+            db.row_factory = aiosqlite.Row
+            room_model = rooms.RoomPersistence(db)
+            
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2", "test_room_name_2")
+            await room_model.add_user_to_room(new_room_id, other_user["user_id"])
+            await room_model.add_user_to_room(new_room_id, other_user_2["user_id"])
+            await room_model.add_user_to_room(new_room_id, user_id)
+            
+            joined_rooms = await room_model.get_joined_rooms_by_user(user_id)
+            self.assertEqual(len(joined_rooms), 1)
+            self.assertEqual(joined_rooms[0]["owner_id"], user_id)
+
+    async def test_deactivate_sets_active_false(self):
+        """test that deactivating a room stops it from being active"""
+        user_id = (await self.get_or_create_user())["user_id"]
+        async with aiosqlite.connect(self.db_name) as db:
+            db.row_factory = aiosqlite.Row
+            room_model = rooms.RoomPersistence(db)
+            
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2", "test_room_name_2")
+            await room_model.deactivate_room(new_room_id)
+
+            room = await room_model.get_room(new_room_id)
+            self.assertFalse(room["active"])
+
+    async def test_deactivate_removes_room_from_joined_for_owner(self):
+        """test that deactivating a room stops it from being returned in rooms for the owner"""
+        user_id = (await self.get_or_create_user())["user_id"]
+        async with aiosqlite.connect(self.db_name) as db:
+            db.row_factory = aiosqlite.Row
+            room_model = rooms.RoomPersistence(db)
+            
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2", "test_room_name_2")
+            await room_model.deactivate_room(new_room_id)
+
+            joined_rooms = await room_model.get_joined_rooms_by_user(user_id)
+            self.assertFalse(any(room["room_id"] == new_room_id for room in joined_rooms))
+    
+    async def test_deactivate_removes_room_from_joined_for_non_owner(self):
+        """test that deactivating a room stops it from being returned in rooms for the owner"""
+        user_id = (await self.get_or_create_user())["user_id"]
+        other_user = await self.random_new_user()
+        async with aiosqlite.connect(self.db_name) as db:
+            db.row_factory = aiosqlite.Row
+            room_model = rooms.RoomPersistence(db)
+            
+            new_room_id = await room_model.create_room(user_id, "test_room_code_2", "test_room_name_2")
+            await room_model.add_user_to_room(new_room_id, other_user["user_id"])
+            await room_model.deactivate_room(new_room_id)
+
+            joined_rooms = await room_model.get_joined_rooms_by_user(other_user["user_id"])
+            self.assertFalse(any(room["room_id"] == new_room_id for room in joined_rooms))
+            

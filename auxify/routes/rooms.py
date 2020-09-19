@@ -59,3 +59,14 @@ async def join_room(request: Request, room_id: int, body: Dict, claims: Dict)-> 
         room_code = body.get("room_code")
     return await rooms.join_room(int(claims["sub"]), room_id, room_code, Config.get_config()) 
 
+
+@post("/rooms/{room_id:\d+}/deactivate", url_variable_types={"room_id": int})
+@login_required
+async def deactivate_room(request: Request, room_id: int, claims: Dict)-> Dict:
+    return await rooms.deactivate_room(int(claims["sub"]), room_id, Config.get_config())
+
+@get("/rooms/find")
+@login_required
+async def find_room_from_identifiers(request: Request, claims: Dict)-> Dict:
+    query = request.query
+    return await rooms.find_room(query, Config.get_config())
